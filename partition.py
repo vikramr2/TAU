@@ -2,11 +2,11 @@ import numpy as np
 import random
 
 class Partition:
-    def __init__(self, tau_instance, sample_fraction=.5, init_partition=None):
+    def __init__(self, G_ig, sample_fraction=.5, init_partition=None):
         np.random.seed()
-        self.tau_instance = tau_instance
-        self.n_nodes = self.tau_instance.G_ig.vcount()
-        self.n_edges = self.tau_instance.G_ig.ecount()
+        self.G_ig = G_ig
+        self.n_nodes = self.G_ig.vcount()
+        self.n_edges = self.G_ig.ecount()
         self.sample_size_nodes = int(self.n_nodes * sample_fraction)
         self.sample_size_edges = int(self.n_edges * sample_fraction)
         self.membership = []
@@ -18,15 +18,18 @@ class Partition:
             self.membership = init_partition
             self.n_comms = len(np.unique(self.membership))
 
+    def flip_coin(self):
+        return random.uniform(0, 1) > .5
+
     def initialize_partition(self):
-        if self.tau_instance.flip_coin():
+        if self.flip_coin():
             # sample nodes
             subsample = np.random.choice(self.n_nodes, size=self.sample_size_nodes, replace=False)
-            subgraph = self.tau_instance.G_ig.subgraph(subsample)
+            subgraph = self.G_ig.subgraph(subsample)
         else:
             # sample edges
             subsample = np.random.choice(self.n_edges, size=self.sample_size_edges, replace=False)
-            subgraph = self.tau_instance.G_ig.subgraph_edges(subsample)
+            subgraph = self.G_ig.subgraph_edges(subsample)
         subsample_partition_memb = np.zeros(self.n_nodes) - 1
         subsample_nodes = [v.index for v in subgraph.vs]
         # leiden on subgraph
@@ -42,7 +45,7 @@ class Partition:
 
     def optimize(self):
         # leiden
-        partition = self.tau_instance.G_ig.community_leiden(objective_function='modularity', initial_membership=self.membership,
+        partition = self.G_ig.community_leiden(objective_function='modularity', initial_membership=self.membership,
                                         n_iterations=3)
         self.membership = partition.membership
         self.n_comms = np.max(self.membership) + 1
@@ -51,7 +54,7 @@ class Partition:
 
     def newman_split(self, indices, comm_id_to_split):
         # newman
-        subgraph = self.tau_instance.G_ig.subgraph(indices)
+        subgraph = self.G_ig.subgraph(indices)
         new_assignment = subgraph.community_leading_eigenvector(clusters=2).membership
         new_assignment[new_assignment == 0] = comm_id_to_split
         new_assignment[new_assignment == 1] = self.n_comms
@@ -64,14 +67,14 @@ class Partition:
 
     def mutate(self):
         self.membership = np.array(self.membership)
-        if self.tau_instance.flip_coin():
+        if self.flip_coin():
             # split a community
             comm_id_to_split = np.random.choice(self.n_comms)
             idx_to_split = np.where(self.membership == comm_id_to_split)[0]
             if len(idx_to_split) > 2:
                 min_comm_size_newman = 10
                 if len(idx_to_split) > min_comm_size_newman:
-                    if self.tau_instance.flip_coin():
+                    if self.flip_coin():
                         self.newman_split(idx_to_split, comm_id_to_split)
                     else:
                         self.random_split(idx_to_split)
@@ -80,7 +83,7 @@ class Partition:
                 self.n_comms += 1
         else:
             # randomly merge two connected communities
-            candidate_edges = random.choices(self.tau_instance.G_ig.es, k=10)
+            candidate_edges = random.choices(self.G_ig.es, k=10)
             for i, e in enumerate(candidate_edges):
                 v1, v2 = e.tuple
                 comm1, comm2 = self.membership[v1], self.membership[v2]
