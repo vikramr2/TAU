@@ -248,7 +248,7 @@ class TAU:
         g = load_graph(args.graph)
     '''
 
-    def tau(self, g, size=60, workers=1, max_generations=500):
+    def tau(self, g, size=60, workers=-1, max_generations=500):
         population_size = max(10, size)
         cpus = os.cpu_count()
         self.N_WORKERS = min(cpus, population_size) if workers == -1 else np.min([cpus, population_size, workers])
@@ -259,7 +259,6 @@ class TAU:
         self.MAX_GENERATIONS = max_generations
 
         print(f'Main parameter values: pop_size={self.POPULATION_SIZE}, workers={self.N_WORKERS}, max_generations={self.MAX_GENERATIONS}')
-        print([v.index for v in g.vs])
 
         best_partition, mod_history = self.find_partition()
         
