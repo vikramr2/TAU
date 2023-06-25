@@ -1,5 +1,5 @@
 import numpy as np
-import tau
+import src.tau as tau
 
 g = tau.load_graph('example.graph')
 

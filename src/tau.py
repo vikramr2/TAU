@@ -7,7 +7,6 @@ from multiprocessing import Pool
 import itertools
 import os
 import random
-import argparse
 
 
 class Partition:
@@ -191,6 +190,7 @@ def compute_partition_similarity_by_pop_idx(idx1, idx2):
 
 
 def elitist_selection_helper(combinations):
+    print(len(combinations))
     assert 0 < len(combinations) <= N_WORKERS
     pool = Pool(len(combinations))
     results = [pool.apply_async(compute_partition_similarity_by_pop_idx, (idx1, idx2))
@@ -324,6 +324,7 @@ stopping_criterion_generations = 10
 stopping_criterion_jaccard = .98
 elite_similarity_threshold = .9
 
+'''
 if __name__ == "__main__":
     # parse script parameters
     parser = argparse.ArgumentParser(description='TAU')
@@ -338,16 +339,21 @@ if __name__ == "__main__":
 
     # set global variable values
     g = load_graph(args.graph)
-    population_size = max(10, args.size)
+'''
+
+def tau(g, size=60, workers=-1, max_generations=500):
+    global PROBS, N_ELITE, N_IMMIGRANTS, G_ig
+    population_size = max(10, size)
     cpus = os.cpu_count()
-    N_WORKERS = min(cpus, population_size) if args.workers == -1 else np.min([cpus, population_size, args.workers])
+    N_WORKERS = min(cpus, population_size) if workers == -1 else np.min([cpus, population_size, workers])
     PROBS = get_probabilities(np.arange(population_size))
     N_ELITE, N_IMMIGRANTS = int(p_elite * population_size), int(p_immigrants * population_size)
     G_ig = g
     POPULATION_SIZE = population_size
-    MAX_GENERATIONS = args.max_generations
+    MAX_GENERATIONS = max_generations
 
     print(f'Main parameter values: pop_size={POPULATION_SIZE}, workers={N_WORKERS}, max_generations={MAX_GENERATIONS}')
 
     best_partition, mod_history = find_partition()
-    np.save(f'TAU_partition_{args.graph}.npy', best_partition.membership)
+    # np.save(f'TAU_partition_{args.graph}.npy', best_partition.membership)
+    return best_partition.membership
